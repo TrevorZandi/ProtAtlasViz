@@ -42,11 +42,11 @@ ENV/
 .DS_Store
 
 # Data files (uncomment patterns as needed)
- *.csv
- *.tsv
- *.txt
- data/processed/
- data/raw/
+*.csv
+*.tsv
+*.txt
+data/processed/
+data/raw/
 
 # Output files
 *.log
