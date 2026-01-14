@@ -1,14 +1,23 @@
 	
 #Brain
 Cerebral cortex
-Hippocampus
+Hippocampal formation
 Caudate
+Basal ganglia
 Cerebellum
+Amygdala
+Hypothalamus
+Midbrain
+Choroid plexus
+Pituitary gland
+Spinal cord
+Retina
 
 #Endocrine tissues
 Thyroid gland
 Parathyroid gland
 Adrenal gland
+Thymus
 
 #Respiratory system
 Nasopharynx
@@ -19,6 +28,7 @@ Lung
 Oral mucosa
 Salivary gland
 Esophagus
+Tongue
 
 #Gastrointestinal tract
 Stomach
@@ -60,6 +70,7 @@ Skeletal muscle
 
 #Connective & Soft tissue
 Adipose tissue
+Blood vessel
 
 #Skin
 Skin

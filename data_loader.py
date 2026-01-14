@@ -46,14 +46,25 @@ class DataLoader:
         return tissue_groups
     
     def get_tissue_to_group_mapping(self) -> Dict[str, str]:
-        """Create reverse mapping: tissue -> organ group"""
+        """Create reverse mapping: tissue -> organ group (case-insensitive)"""
         if self.tissue_groups is None:
             self.load_histology_dictionary()
+        
+        if self.expression_data is None:
+            self.load_expression_data()
+        
+        # Get all tissues from actual data
+        all_tissues_in_data = self.expression_data['Tissue'].unique()
         
         tissue_to_group = {}
         for group, tissues in self.tissue_groups.items():
             for tissue in tissues:
-                tissue_to_group[tissue] = group
+                # Find matching tissue in data (case-insensitive)
+                matching_tissues = [t for t in all_tissues_in_data 
+                                   if t.lower() == tissue.lower()]
+                if matching_tissues:
+                    # Map the actual tissue name from data to the group
+                    tissue_to_group[matching_tissues[0]] = group
         
         return tissue_to_group
     
