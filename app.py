@@ -147,11 +147,21 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                     row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>nTPM: {value:.1f}")
         hover_text.append(row_text)
     
+    # Improve color contrast with multi-step colorscale
+    colorscale = [
+        [0.0, 'rgb(255, 255, 255)'],    # White for zero/low
+        [0.1, 'rgb(230, 240, 255)'],    # Very light blue
+        [0.3, 'rgb(180, 210, 255)'],    # Light blue
+        [0.5, 'rgb(100, 150, 255)'],    # Medium blue
+        [0.7, 'rgb(50, 100, 200)'],     # Dark blue
+        [1.0, 'rgb(0, 0, 139)']         # Navy blue for maximum
+    ]
+    
     fig = go.Figure(data=go.Heatmap(
         z=pivot_data.values,
         x=pivot_data.columns,
         y=pivot_data.index,
-        colorscale=[[0, 'white'], [1, 'blue']],
+        colorscale=colorscale,
         hovertemplate='%{customdata}<extra></extra>',
         customdata=hover_text,
         colorbar=dict(title="log2(nTPM+1)" if log_scale else "nTPM")
