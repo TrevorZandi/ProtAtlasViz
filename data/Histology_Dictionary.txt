@@ -1,0 +1,72 @@
+	
+#Brain
+Cerebral cortex
+Hippocampus
+Caudate
+Cerebellum
+
+#Endocrine tissues
+Thyroid gland
+Parathyroid gland
+Adrenal gland
+
+#Respiratory system
+Nasopharynx
+Bronchus
+Lung
+
+#Proximal digestive tract
+Oral mucosa
+Salivary gland
+Esophagus
+
+#Gastrointestinal tract
+Stomach
+Duodenum
+Small intestine
+Colon
+Rectum
+
+#Liver & Gallbladder
+Liver
+Gallbladder
+
+#Pancreas
+Pancreas
+
+#Kidney & Urinary bladder
+Kidney
+Urinary bladder
+
+#Male tissues
+Testis
+Epididymis
+Seminal vesicle
+Prostate
+
+#Female tissues
+Vagina
+Ovary
+Fallopian tube
+Endometrium
+Cervix
+Placenta
+Breast
+
+#Muscle tissues
+Heart muscle
+Smooth muscle
+Skeletal muscle
+
+#Connective & Soft tissue
+Adipose tissue
+
+#Skin
+Skin
+
+#Bone marrow & Lymphoid tissues
+Bone marrow
+Lymph node
+Tonsil
+Spleen
+Appendix
