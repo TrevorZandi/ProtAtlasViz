@@ -166,6 +166,10 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                 fig.add_vline(x=i-0.5, line_width=2, line_color="white")
                 current_group = group
     
+    # Calculate dynamic width based on number of tissues (minimum 800, maximum 2000)
+    num_tissues = len(pivot_data.columns)
+    dynamic_width = max(800, min(2000, num_tissues * 25 + 200))
+    
     fig.update_layout(
         title={
             'text': "Gene Expression Heatmap" + (" (Log Scale)" if log_scale else ""),
@@ -174,7 +178,7 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
         xaxis_title="Tissue",
         yaxis_title="Gene",
         height=max(600, len(pivot_data.index) * 60),
-        width=1400,
+        width=dynamic_width,
         xaxis={
             'tickangle': -45,
             'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
@@ -226,6 +230,10 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
     
     yaxis_title = "log2(nTPM+1)" if log_scale else "nTPM"
     
+    # Calculate dynamic width based on number of tissues (minimum 800, maximum 2000)
+    num_tissues = len(data['Tissue'].unique())
+    dynamic_width = max(800, min(2000, num_tissues * 25 + 200))
+    
     fig.update_layout(
         title={
             'text': "Gene Expression by Tissue" + (" (Log Scale)" if log_scale else ""),
@@ -235,7 +243,7 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
         yaxis_title=yaxis_title,
         barmode='group',
         height=700,
-        width=1400,
+        width=dynamic_width,
         xaxis={
             'tickangle': -45,
             'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
@@ -288,6 +296,10 @@ def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: 
     
     yaxis_title = "log2(nTPM+1)" if log_scale else "nTPM"
     
+    # Calculate dynamic width based on number of tissues (minimum 800, maximum 2000)
+    num_tissues = len(data['Tissue'].unique())
+    dynamic_width = max(800, min(2000, num_tissues * 25 + 200))
+    
     fig.update_layout(
         title={
             'text': "Gene Expression Distribution" + (" (Log Scale)" if log_scale else ""),
@@ -296,7 +308,7 @@ def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: 
         xaxis_title="Tissue",
         yaxis_title=yaxis_title,
         height=700,
-        width=1400,
+        width=dynamic_width,
         xaxis={
             'tickangle': -45,
             'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
@@ -414,7 +426,7 @@ def update_visualization(selected_genes, grouping, viz_type, log_scale):
                 'format': 'png',
                 'filename': 'gene_expression_plot',
                 'height': 1080,
-                'width': 1920,
+                'width': None,  # Use figure width
                 'scale': 2
             },
             'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'eraseshape']
