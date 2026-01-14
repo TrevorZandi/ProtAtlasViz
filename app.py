@@ -167,11 +167,26 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                 current_group = group
     
     fig.update_layout(
-        title="Gene Expression Heatmap" + (" (Log Scale)" if log_scale else ""),
+        title={
+            'text': "Gene Expression Heatmap" + (" (Log Scale)" if log_scale else ""),
+            'font': {'size': 24, 'color': 'black', 'family': 'Arial'}
+        },
         xaxis_title="Tissue",
         yaxis_title="Gene",
-        height=max(400, len(pivot_data.index) * 50),
-        xaxis={'tickangle': -45}
+        height=max(600, len(pivot_data.index) * 60),
+        width=1400,
+        xaxis={
+            'tickangle': -45,
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'}
+        },
+        yaxis={
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'}
+        },
+        font={'family': 'Arial', 'size': 14, 'color': 'black'},
+        plot_bgcolor='white',
+        paper_bgcolor='white'
     )
     
     return fig
@@ -209,16 +224,43 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
             customdata=hover_text
         ))
     
-    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM (Normalized Transcripts Per Million)"
+    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM"
     
     fig.update_layout(
-        title="Gene Expression by Tissue" + (" (Log Scale)" if log_scale else ""),
+        title={
+            'text': "Gene Expression by Tissue" + (" (Log Scale)" if log_scale else ""),
+            'font': {'size': 24, 'color': 'black', 'family': 'Arial'}
+        },
         xaxis_title="Tissue",
         yaxis_title=yaxis_title,
         barmode='group',
-        height=600,
-        xaxis={'tickangle': -45},
-        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
+        height=700,
+        width=1400,
+        xaxis={
+            'tickangle': -45,
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'}
+        },
+        yaxis={
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'},
+            'gridcolor': 'lightgray',
+            'gridwidth': 1
+        },
+        font={'family': 'Arial', 'size': 14, 'color': 'black'},
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02,
+            font={'size': 14, 'color': 'black', 'family': 'Arial'},
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='black',
+            borderwidth=1
+        )
     )
     
     return fig
@@ -244,15 +286,42 @@ def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: 
             boxmean='sd'
         ))
     
-    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM (Normalized Transcripts Per Million)"
+    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM"
     
     fig.update_layout(
-        title="Gene Expression Distribution" + (" (Log Scale)" if log_scale else ""),
+        title={
+            'text': "Gene Expression Distribution" + (" (Log Scale)" if log_scale else ""),
+            'font': {'size': 24, 'color': 'black', 'family': 'Arial'}
+        },
         xaxis_title="Tissue",
         yaxis_title=yaxis_title,
-        height=600,
-        xaxis={'tickangle': -45},
-        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
+        height=700,
+        width=1400,
+        xaxis={
+            'tickangle': -45,
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'}
+        },
+        yaxis={
+            'tickfont': {'size': 14, 'color': 'black', 'family': 'Arial'},
+            'titlefont': {'size': 18, 'color': 'black', 'family': 'Arial'},
+            'gridcolor': 'lightgray',
+            'gridwidth': 1
+        },
+        font={'family': 'Arial', 'size': 14, 'color': 'black'},
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02,
+            font={'size': 14, 'color': 'black', 'family': 'Arial'},
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='black',
+            borderwidth=1
+        )
     )
     
     return fig
@@ -336,7 +405,21 @@ def update_visualization(selected_genes, grouping, viz_type, log_scale):
     else:
         return dbc.Alert("Invalid visualization type", color="danger")
     
-    return dcc.Graph(figure=fig, config={'displayModeBar': True, 'displaylogo': False})
+    return dcc.Graph(
+        figure=fig,
+        config={
+            'displayModeBar': True,
+            'displaylogo': False,
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': 'gene_expression_plot',
+                'height': 1080,
+                'width': 1920,
+                'scale': 2
+            },
+            'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'eraseshape']
+        }
+    )
 
 
 if __name__ == '__main__':
