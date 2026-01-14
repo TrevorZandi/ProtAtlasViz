@@ -73,7 +73,7 @@ app.layout = dbc.Container([
                                 inline=True,
                                 className="ms-2"
                             )
-                        ], md=6),
+                        ], md=4),
                         dbc.Col([
                             html.Label("Visualization Type:", className="fw-bold"),
                             dcc.Dropdown(
@@ -87,7 +87,20 @@ app.layout = dbc.Container([
                                 clearable=False,
                                 style={'width': '100%'}
                             )
-                        ], md=6)
+                        ], md=4),
+                        dbc.Col([
+                            html.Label("Scale:", className="fw-bold"),
+                            dcc.RadioItems(
+                                id='log-toggle',
+                                options=[
+                                    {'label': ' Linear', 'value': 'linear'},
+                                    {'label': ' Log', 'value': 'log'}
+                                ],
+                                value='linear',
+                                inline=True,
+                                className="ms-2"
+                            )
+                        ], md=4)
                     ])
                 ])
             ], className="mb-4")
@@ -107,7 +120,7 @@ app.layout = dbc.Container([
 
 
 def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict, 
-                   show_groups: bool = True) -> go.Figure:
+                   show_groups: bool = True, log_scale: bool = False) -> go.Figure:
     """Create a heatmap visualization"""
     # Pivot data for heatmap
     pivot_data = data.pivot(index='Gene name', columns='Tissue', values='nTPM')
@@ -126,7 +139,12 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                 row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>nTPM: N/A")
             else:
                 group = tissue_to_group.get(tissue, "Other")
-                row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>nTPM: {value:.1f}")
+                if log_scale:
+                    # Show both log and original value
+                    original_value = 10**value - 1
+                    row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>log10(nTPM+1): {value:.2f}<br>nTPM: {original_value:.1f}")
+                else:
+                    row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>nTPM: {value:.1f}")
         hover_text.append(row_text)
     
     fig = go.Figure(data=go.Heatmap(
@@ -136,7 +154,7 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
         colorscale=[[0, 'white'], [1, 'blue']],
         hovertemplate='%{customdata}<extra></extra>',
         customdata=hover_text,
-        colorbar=dict(title="nTPM")
+        colorbar=dict(title="log10(nTPM+1)" if log_scale else "nTPM")
     ))
     
     # Add group separators if showing individual tissues
@@ -149,7 +167,7 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                 current_group = group
     
     fig.update_layout(
-        title="Gene Expression Heatmap",
+        title="Gene Expression Heatmap" + (" (Log Scale)" if log_scale else ""),
         xaxis_title="Tissue",
         yaxis_title="Gene",
         height=max(400, len(pivot_data.index) * 50),
@@ -159,7 +177,8 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
     return fig
 
 
-def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict) -> go.Figure:
+def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict, 
+                     log_scale: bool = False) -> go.Figure:
     """Create a grouped bar chart"""
     # Ensure proper ordering
     data = data.copy()
@@ -171,10 +190,16 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
     for gene in data['Gene name'].unique():
         gene_data = data[data['Gene name'] == gene]
         
-        hover_text = [
-            f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>nTPM: {ntpm:.1f}"
-            for tissue, ntpm in zip(gene_data['Tissue'], gene_data['nTPM'])
-        ]
+        if log_scale:
+            hover_text = [
+                f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>log10(nTPM+1): {ntpm:.2f}<br>nTPM: {(10**ntpm - 1):.1f}"
+                for tissue, ntpm in zip(gene_data['Tissue'], gene_data['nTPM'])
+            ]
+        else:
+            hover_text = [
+                f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>nTPM: {ntpm:.1f}"
+                for tissue, ntpm in zip(gene_data['Tissue'], gene_data['nTPM'])
+            ]
         
         fig.add_trace(go.Bar(
             name=gene,
@@ -184,10 +209,12 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
             customdata=hover_text
         ))
     
+    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM (Normalized Transcripts Per Million)"
+    
     fig.update_layout(
-        title="Gene Expression by Tissue",
+        title="Gene Expression by Tissue" + (" (Log Scale)" if log_scale else ""),
         xaxis_title="Tissue",
-        yaxis_title="nTPM (Normalized Transcripts Per Million)",
+        yaxis_title=yaxis_title,
         barmode='group',
         height=600,
         xaxis={'tickangle': -45},
@@ -197,7 +224,8 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
     return fig
 
 
-def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict) -> go.Figure:
+def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict,
+                    log_scale: bool = False) -> go.Figure:
     """Create a box plot showing expression distribution"""
     # Ensure proper ordering
     data = data.copy()
@@ -216,10 +244,12 @@ def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: 
             boxmean='sd'
         ))
     
+    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM (Normalized Transcripts Per Million)"
+    
     fig.update_layout(
-        title="Gene Expression Distribution",
+        title="Gene Expression Distribution" + (" (Log Scale)" if log_scale else ""),
         xaxis_title="Tissue",
-        yaxis_title="nTPM (Normalized Transcripts Per Million)",
+        yaxis_title=yaxis_title,
         height=600,
         xaxis={'tickangle': -45},
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
@@ -249,9 +279,10 @@ def update_gene_count(selected_genes):
     Output('visualization-container', 'children'),
     [Input('gene-selector', 'value'),
      Input('grouping-toggle', 'value'),
-     Input('viz-type', 'value')]
+     Input('viz-type', 'value'),
+     Input('log-toggle', 'value')]
 )
-def update_visualization(selected_genes, grouping, viz_type):
+def update_visualization(selected_genes, grouping, viz_type, log_scale):
     """Update the visualization based on user selections"""
     if not selected_genes:
         return dbc.Alert(
@@ -287,14 +318,21 @@ def update_visualization(selected_genes, grouping, viz_type):
         ordered_tissues = sorted(expression_data['Tissue'].unique())
         tissue_to_group = {t: t for t in ordered_tissues}  # Groups map to themselves
     
+    # Apply log transformation if requested
+    if log_scale == 'log':
+        expression_data = expression_data.copy()
+        expression_data['nTPM'] = np.log10(expression_data['nTPM'] + 1)  # log10(x+1) to handle zeros
+    
     # Create appropriate visualization
     if viz_type == 'heatmap':
         fig = create_heatmap(expression_data, ordered_tissues, tissue_to_group, 
-                            show_groups=(grouping == 'tissue'))
+                            show_groups=(grouping == 'tissue'), log_scale=(log_scale == 'log'))
     elif viz_type == 'bar':
-        fig = create_bar_chart(expression_data, ordered_tissues, tissue_to_group)
+        fig = create_bar_chart(expression_data, ordered_tissues, tissue_to_group, 
+                              log_scale=(log_scale == 'log'))
     elif viz_type == 'box':
-        fig = create_box_plot(expression_data, ordered_tissues, tissue_to_group)
+        fig = create_box_plot(expression_data, ordered_tissues, tissue_to_group,
+                             log_scale=(log_scale == 'log'))
     else:
         return dbc.Alert("Invalid visualization type", color="danger")
     
