@@ -1,0 +1,310 @@
+"""
+ProtAtlasViz - Protein Atlas Tissue Expression Visualizer
+A Dash application for visualizing tissue-selective gene expression patterns
+"""
+import dash
+from dash import dcc, html, Input, Output, State
+import dash_bootstrap_components as dbc
+import plotly.graph_objects as go
+import plotly.express as px
+import pandas as pd
+import numpy as np
+from data_loader import DataLoader
+
+# Initialize the app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app.title = "ProtAtlasViz - Gene Expression Visualizer"
+
+# Initialize data loader
+data_loader = DataLoader()
+print("Loading expression data...")
+data_loader.load_expression_data()
+print("Loading histology dictionary...")
+data_loader.load_histology_dictionary()
+print(f"Data loaded: {len(data_loader.genes)} genes available")
+
+# Layout
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col([
+            html.H1("🧬 ProtAtlasViz", className="text-center mb-4 mt-4"),
+            html.P("Visualize tissue-selective gene expression patterns from RNA-seq data",
+                   className="text-center text-muted mb-4")
+        ])
+    ]),
+    
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H5("Gene Selection", className="card-title"),
+                    html.P("Search and select up to 10 genes to visualize", 
+                           className="text-muted small"),
+                    dcc.Dropdown(
+                        id='gene-selector',
+                        options=[{'label': gene, 'value': gene} for gene in data_loader.genes],
+                        multi=True,
+                        placeholder="Type to search genes...",
+                        searchable=True,
+                        maxHeight=300,
+                        style={'width': '100%'}
+                    ),
+                    html.Div(id='gene-count', className="mt-2 small text-muted")
+                ])
+            ], className="mb-4")
+        ], width=12)
+    ]),
+    
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.H5("Visualization Options", className="card-title"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Grouping Level:", className="fw-bold"),
+                            dcc.RadioItems(
+                                id='grouping-toggle',
+                                options=[
+                                    {'label': ' Individual Tissues', 'value': 'tissue'},
+                                    {'label': ' Organ Groups', 'value': 'organ'}
+                                ],
+                                value='tissue',
+                                inline=True,
+                                className="ms-2"
+                            )
+                        ], md=6),
+                        dbc.Col([
+                            html.Label("Visualization Type:", className="fw-bold"),
+                            dcc.Dropdown(
+                                id='viz-type',
+                                options=[
+                                    {'label': 'Heatmap', 'value': 'heatmap'},
+                                    {'label': 'Grouped Bar Chart', 'value': 'bar'},
+                                    {'label': 'Box Plot', 'value': 'box'}
+                                ],
+                                value='heatmap',
+                                clearable=False,
+                                style={'width': '100%'}
+                            )
+                        ], md=6)
+                    ])
+                ])
+            ], className="mb-4")
+        ], width=12)
+    ]),
+    
+    dbc.Row([
+        dbc.Col([
+            dcc.Loading(
+                id="loading",
+                type="default",
+                children=html.Div(id='visualization-container')
+            )
+        ], width=12)
+    ])
+], fluid=True, style={'maxWidth': '1400px'})
+
+
+def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict, 
+                   show_groups: bool = True) -> go.Figure:
+    """Create a heatmap visualization"""
+    # Pivot data for heatmap
+    pivot_data = data.pivot(index='Gene name', columns='Tissue', values='nTPM')
+    
+    # Reorder columns to match tissue order
+    available_tissues = [t for t in ordered_tissues if t in pivot_data.columns]
+    pivot_data = pivot_data[available_tissues]
+    
+    # Create custom hover text
+    hover_text = []
+    for gene in pivot_data.index:
+        row_text = []
+        for tissue in pivot_data.columns:
+            value = pivot_data.loc[gene, tissue]
+            if pd.isna(value):
+                row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>nTPM: N/A")
+            else:
+                group = tissue_to_group.get(tissue, "Other")
+                row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>nTPM: {value:.1f}")
+        hover_text.append(row_text)
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot_data.values,
+        x=pivot_data.columns,
+        y=pivot_data.index,
+        colorscale='Viridis',
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=hover_text,
+        colorbar=dict(title="nTPM")
+    ))
+    
+    # Add group separators if showing individual tissues
+    if show_groups:
+        current_group = None
+        for i, tissue in enumerate(pivot_data.columns):
+            group = tissue_to_group.get(tissue, "Other")
+            if group != current_group:
+                fig.add_vline(x=i-0.5, line_width=2, line_color="white")
+                current_group = group
+    
+    fig.update_layout(
+        title="Gene Expression Heatmap",
+        xaxis_title="Tissue",
+        yaxis_title="Gene",
+        height=max(400, len(pivot_data.index) * 50),
+        xaxis={'tickangle': -45}
+    )
+    
+    return fig
+
+
+def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict) -> go.Figure:
+    """Create a grouped bar chart"""
+    # Ensure proper ordering
+    data = data.copy()
+    data['Tissue'] = pd.Categorical(data['Tissue'], categories=ordered_tissues, ordered=True)
+    data = data.sort_values('Tissue')
+    
+    fig = go.Figure()
+    
+    for gene in data['Gene name'].unique():
+        gene_data = data[data['Gene name'] == gene]
+        
+        hover_text = [
+            f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>nTPM: {ntpm:.1f}"
+            for tissue, ntpm in zip(gene_data['Tissue'], gene_data['nTPM'])
+        ]
+        
+        fig.add_trace(go.Bar(
+            name=gene,
+            x=gene_data['Tissue'],
+            y=gene_data['nTPM'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_text
+        ))
+    
+    fig.update_layout(
+        title="Gene Expression by Tissue",
+        xaxis_title="Tissue",
+        yaxis_title="nTPM (Normalized Transcripts Per Million)",
+        barmode='group',
+        height=600,
+        xaxis={'tickangle': -45},
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
+    )
+    
+    return fig
+
+
+def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: dict) -> go.Figure:
+    """Create a box plot showing expression distribution"""
+    # Ensure proper ordering
+    data = data.copy()
+    data['Tissue'] = pd.Categorical(data['Tissue'], categories=ordered_tissues, ordered=True)
+    data = data.sort_values('Tissue')
+    
+    fig = go.Figure()
+    
+    for gene in data['Gene name'].unique():
+        gene_data = data[data['Gene name'] == gene]
+        
+        fig.add_trace(go.Box(
+            name=gene,
+            x=gene_data['Tissue'],
+            y=gene_data['nTPM'],
+            boxmean='sd'
+        ))
+    
+    fig.update_layout(
+        title="Gene Expression Distribution",
+        xaxis_title="Tissue",
+        yaxis_title="nTPM (Normalized Transcripts Per Million)",
+        height=600,
+        xaxis={'tickangle': -45},
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
+    )
+    
+    return fig
+
+
+@app.callback(
+    Output('gene-count', 'children'),
+    Input('gene-selector', 'value')
+)
+def update_gene_count(selected_genes):
+    """Update the gene count display"""
+    if not selected_genes:
+        return "No genes selected"
+    
+    count = len(selected_genes)
+    if count > 10:
+        return html.Span(f"⚠️ {count}/10 genes selected (maximum 10 allowed)", 
+                        style={'color': 'red', 'fontWeight': 'bold'})
+    else:
+        return f"✓ {count}/10 genes selected"
+
+
+@app.callback(
+    Output('visualization-container', 'children'),
+    [Input('gene-selector', 'value'),
+     Input('grouping-toggle', 'value'),
+     Input('viz-type', 'value')]
+)
+def update_visualization(selected_genes, grouping, viz_type):
+    """Update the visualization based on user selections"""
+    if not selected_genes:
+        return dbc.Alert(
+            "👆 Please select one or more genes to visualize",
+            color="info",
+            className="text-center"
+        )
+    
+    if len(selected_genes) > 10:
+        return dbc.Alert(
+            "⚠️ Please select no more than 10 genes",
+            color="warning",
+            className="text-center"
+        )
+    
+    # Get expression data for selected genes
+    expression_data = data_loader.get_expression_for_genes(selected_genes)
+    
+    if expression_data.empty:
+        return dbc.Alert(
+            "No expression data found for selected genes",
+            color="warning",
+            className="text-center"
+        )
+    
+    # Get ordered tissues and grouping information
+    ordered_tissues, tissue_to_group = data_loader.get_ordered_tissues_by_group()
+    
+    # Aggregate by organ group if requested
+    if grouping == 'organ':
+        expression_data = data_loader.aggregate_by_organ_group(expression_data)
+        # Update ordered list for organ groups
+        ordered_tissues = sorted(expression_data['Tissue'].unique())
+        tissue_to_group = {t: t for t in ordered_tissues}  # Groups map to themselves
+    
+    # Create appropriate visualization
+    if viz_type == 'heatmap':
+        fig = create_heatmap(expression_data, ordered_tissues, tissue_to_group, 
+                            show_groups=(grouping == 'tissue'))
+    elif viz_type == 'bar':
+        fig = create_bar_chart(expression_data, ordered_tissues, tissue_to_group)
+    elif viz_type == 'box':
+        fig = create_box_plot(expression_data, ordered_tissues, tissue_to_group)
+    else:
+        return dbc.Alert("Invalid visualization type", color="danger")
+    
+    return dcc.Graph(figure=fig, config={'displayModeBar': True, 'displaylogo': False})
+
+
+if __name__ == '__main__':
+    print("\n" + "="*60)
+    print("Starting ProtAtlasViz Server")
+    print("="*60)
+    print("Open your browser and navigate to: http://127.0.0.1:8050/")
+    print("="*60 + "\n")
+    app.run_server(debug=True, host='127.0.0.1', port=8050)
