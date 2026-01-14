@@ -133,7 +133,7 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
         z=pivot_data.values,
         x=pivot_data.columns,
         y=pivot_data.index,
-        colorscale='Viridis',
+        colorscale=[[0, 'white'], [1, 'blue']],
         hovertemplate='%{customdata}<extra></extra>',
         customdata=hover_text,
         colorbar=dict(title="nTPM")
