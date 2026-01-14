@@ -141,8 +141,8 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
                 group = tissue_to_group.get(tissue, "Other")
                 if log_scale:
                     # Show both log and original value
-                    original_value = 10**value - 1
-                    row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>log10(nTPM+1): {value:.2f}<br>nTPM: {original_value:.1f}")
+                    original_value = 2**value - 1
+                    row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>log2(nTPM+1): {value:.2f}<br>nTPM: {original_value:.1f}")
                 else:
                     row_text.append(f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {group}<br>nTPM: {value:.1f}")
         hover_text.append(row_text)
@@ -154,7 +154,7 @@ def create_heatmap(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: d
         colorscale=[[0, 'white'], [1, 'blue']],
         hovertemplate='%{customdata}<extra></extra>',
         customdata=hover_text,
-        colorbar=dict(title="log10(nTPM+1)" if log_scale else "nTPM")
+        colorbar=dict(title="log2(nTPM+1)" if log_scale else "nTPM")
     ))
     
     # Add group separators if showing individual tissues
@@ -207,7 +207,7 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
         
         if log_scale:
             hover_text = [
-                f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>log10(nTPM+1): {ntpm:.2f}<br>nTPM: {(10**ntpm - 1):.1f}"
+                f"Gene: {gene}<br>Tissue: {tissue}<br>Organ: {tissue_to_group.get(tissue, 'Other')}<br>log2(nTPM+1): {ntpm:.2f}<br>nTPM: {(2**ntpm - 1):.1f}"
                 for tissue, ntpm in zip(gene_data['Tissue'], gene_data['nTPM'])
             ]
         else:
@@ -224,7 +224,7 @@ def create_bar_chart(data: pd.DataFrame, ordered_tissues: list, tissue_to_group:
             customdata=hover_text
         ))
     
-    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM"
+    yaxis_title = "log2(nTPM+1)" if log_scale else "nTPM"
     
     fig.update_layout(
         title={
@@ -286,7 +286,7 @@ def create_box_plot(data: pd.DataFrame, ordered_tissues: list, tissue_to_group: 
             boxmean='sd'
         ))
     
-    yaxis_title = "log10(nTPM+1)" if log_scale else "nTPM"
+    yaxis_title = "log2(nTPM+1)" if log_scale else "nTPM"
     
     fig.update_layout(
         title={
@@ -390,7 +390,7 @@ def update_visualization(selected_genes, grouping, viz_type, log_scale):
     # Apply log transformation if requested
     if log_scale == 'log':
         expression_data = expression_data.copy()
-        expression_data['nTPM'] = np.log10(expression_data['nTPM'] + 1)  # log10(x+1) to handle zeros
+        expression_data['nTPM'] = np.log2(expression_data['nTPM'] + 1)  # log2(x+1) to handle zeros
     
     # Create appropriate visualization
     if viz_type == 'heatmap':
